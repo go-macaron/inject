@@ -1,4 +1,4 @@
-# inject
+# inject [![Build Status](https://travis-ci.org/go-macaron/inject.svg?branch=master)](https://travis-ci.org/go-macaron/inject) [![](http://gocover.io/_badge/github.com/go-macaron/inject)](http://gocover.io/github.com/go-macaron/inject)
 
 Package inject provides utilities for mapping and injecting dependencies in various ways.
 
