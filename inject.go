@@ -50,6 +50,20 @@ type Invoker interface {
 	Invoke(interface{}) ([]reflect.Value, error)
 }
 
+// FastInvoker represents an interface for fast calling functions external function.
+type FastInvoker interface {
+	// Invoke
+	Invoke([]interface{}) ([]reflect.Value, error)
+}
+
+// IsFastInvoker check interface is FastInvoker
+func IsFastInvoker(h interface{}) bool {
+	if _, ok := h.(FastInvoker); ok {
+		return true
+	}
+	return false
+}
+
 // TypeMapper represents an interface for mapping interface{} values based on type.
 type TypeMapper interface {
 	// Maps the interface{} value based on its immediate type from reflect.TypeOf.
@@ -102,18 +116,52 @@ func New() Injector {
 // It panics if f is not a function
 func (inj *injector) Invoke(f interface{}) ([]reflect.Value, error) {
 	t := reflect.TypeOf(f)
-
-	var in = make([]reflect.Value, t.NumIn()) //Panic if t is not kind of Func
-	for i := 0; i < t.NumIn(); i++ {
-		argType := t.In(i)
-		val := inj.GetVal(argType)
-		if !val.IsValid() {
-			return nil, fmt.Errorf("Value not found for type %v", argType)
-		}
-
-		in[i] = val
+	numIn := t.NumIn()
+	switch v := f.(type) {
+	case FastInvoker:
+		return inj.fastInvoke(v, t, numIn)
+	default:
+		return inj.callInvoke(f, t, numIn)
 	}
+}
 
+// fastInvoke fastInvoke call
+func (inj *injector) fastInvoke(f FastInvoker, t reflect.Type, numIn int) ([]reflect.Value, error) {
+	var in []interface{}
+	if numIn > 0 {
+		in = make([]interface{}, numIn) //Panic if t is not kind of Func
+		var argType reflect.Type
+		var val reflect.Value
+		for i := 0; i < numIn; i++ {
+			argType = t.In(i)
+			val = inj.GetVal(argType)
+			if !val.IsValid() {
+				return nil, fmt.Errorf("Value not found for type %v", argType)
+			}
+
+			in[i] = val.Interface()
+		}
+	}
+	return f.Invoke(in)
+}
+
+// callInvoke reflect.Value.Call
+func (inj *injector) callInvoke(f interface{}, t reflect.Type, numIn int) ([]reflect.Value, error) {
+	var in []reflect.Value
+	if numIn > 0 {
+		in = make([]reflect.Value, numIn) //Panic if t is not kind of Func
+		var argType reflect.Type
+		var val reflect.Value
+		for i := 0; i < numIn; i++ {
+			argType = t.In(i)
+			val = inj.GetVal(argType)
+			if !val.IsValid() {
+				return nil, fmt.Errorf("Value not found for type %v", argType)
+			}
+
+			in[i] = val
+		}
+	}
 	return reflect.ValueOf(f).Call(in), nil
 }
 
