@@ -50,18 +50,32 @@ type Invoker interface {
 	Invoke(interface{}) ([]reflect.Value, error)
 }
 
-// FastInvoker represents an interface for fast calling functions external function.
+// FastInvoker represents an interface in order to avoid the calling function via reflection.
+//
+// example:
+//	type handlerFuncHandler func(http.ResponseWriter, *http.Request) error
+//	func (f handlerFuncHandler)Invoke([]interface{}) ([]reflect.Value, error){
+//		ret := f(p[0].(http.ResponseWriter), p[1].(*http.Request))
+//		return []reflect.Value{reflect.ValueOf(ret)}, nil
+//	}
+//
+//	type funcHandler func(int, string)
+//	func (f funcHandler)Invoke([]interface{}) ([]reflect.Value, error){
+//		f(p[0].(int), p[1].(string))
+//		return nil, nil
+//	}
 type FastInvoker interface {
-	// Invoke
+	// Invoke attempts to call the ordinary functions. If f is a function
+	// with the appropriate signature, f.Invoke([]interface{}) is a Call that calls f.
+	// Returns a slice of reflect.Value representing the returned values of the function.
+	// Returns an error if the injection fails.
 	Invoke([]interface{}) ([]reflect.Value, error)
 }
 
 // IsFastInvoker check interface is FastInvoker
 func IsFastInvoker(h interface{}) bool {
-	if _, ok := h.(FastInvoker); ok {
-		return true
-	}
-	return false
+	_, ok := h.(FastInvoker)
+	return ok
 }
 
 // TypeMapper represents an interface for mapping interface{} values based on type.

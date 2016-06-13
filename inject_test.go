@@ -182,7 +182,7 @@ func Test_Injector_Implementors(t *testing.T) {
 	})
 }
 
-//----------Benchmark Injecto rInvoke-------------
+//----------Benchmark InjectorInvoke-------------
 
 func f1InjectorInvoke(d1 string, d2 SpecialString) string {
 	return "f1"
