@@ -130,20 +130,18 @@ func New() Injector {
 // It panics if f is not a function
 func (inj *injector) Invoke(f interface{}) ([]reflect.Value, error) {
 	t := reflect.TypeOf(f)
-	numIn := t.NumIn()
 	switch v := f.(type) {
 	case FastInvoker:
-		return inj.fastInvoke(v, t, numIn)
+		return inj.fastInvoke(v, t, t.NumIn())
 	default:
-		return inj.callInvoke(f, t, numIn)
+		return inj.callInvoke(f, t, t.NumIn())
 	}
 }
 
-// fastInvoke fastInvoke call
 func (inj *injector) fastInvoke(f FastInvoker, t reflect.Type, numIn int) ([]reflect.Value, error) {
 	var in []interface{}
 	if numIn > 0 {
-		in = make([]interface{}, numIn) //Panic if t is not kind of Func
+		in = make([]interface{}, numIn) // Panic if t is not kind of Func
 		var argType reflect.Type
 		var val reflect.Value
 		for i := 0; i < numIn; i++ {
@@ -163,7 +161,7 @@ func (inj *injector) fastInvoke(f FastInvoker, t reflect.Type, numIn int) ([]ref
 func (inj *injector) callInvoke(f interface{}, t reflect.Type, numIn int) ([]reflect.Value, error) {
 	var in []reflect.Value
 	if numIn > 0 {
-		in = make([]reflect.Value, numIn) //Panic if t is not kind of Func
+		in = make([]reflect.Value, numIn)
 		var argType reflect.Type
 		var val reflect.Value
 		for i := 0; i < numIn; i++ {

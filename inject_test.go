@@ -41,6 +41,12 @@ func (g *Greeter) String() string {
 	return "Hello, My name is" + g.Name
 }
 
+type myFastInvoker func(string)
+
+func (f myFastInvoker) Invoke([]interface{}) ([]reflect.Value, error) {
+	return nil, nil
+}
+
 func Test_Injector_Invoke(t *testing.T) {
 	Convey("Invokes function", t, func() {
 		injector := inject.New()
@@ -65,7 +71,9 @@ func Test_Injector_Invoke(t *testing.T) {
 			So(reflect.TypeOf(d3).ChanDir(), ShouldEqual, reflect.RecvDir)
 			So(reflect.TypeOf(d4).ChanDir(), ShouldEqual, reflect.SendDir)
 		})
+		So(err, ShouldBeNil)
 
+		_, err = injector.Invoke(myFastInvoker(func(string) {}))
 		So(err, ShouldBeNil)
 	})
 
@@ -182,6 +190,12 @@ func Test_Injector_Implementors(t *testing.T) {
 	})
 }
 
+func Test_FastInvoker(t *testing.T) {
+	Convey("Check fast invoker", t, func() {
+		So(inject.IsFastInvoker(myFastInvoker(nil)), ShouldBeTrue)
+	})
+}
+
 //----------Benchmark InjectorInvoke-------------
 
 func f1InjectorInvoke(d1 string, d2 SpecialString) string {
@@ -227,15 +241,19 @@ func BenchmarkInjectorInvokeNative(b *testing.B) {
 func BenchmarkInjectorInvokeOriginal(b *testing.B) {
 	benchmarkInjectorInvoke(b, false, false)
 }
+
 func BenchmarkInjectorInvokeFast(b *testing.B) {
 	benchmarkInjectorInvoke(b, true, false)
 }
+
 func BenchmarkInjectorInvokeOriginalSimple(b *testing.B) {
 	benchmarkInjectorInvoke(b, false, true)
 }
+
 func BenchmarkInjectorInvokeFastSimple(b *testing.B) {
 	benchmarkInjectorInvoke(b, true, true)
 }
+
 func benchmarkInjectorInvoke(b *testing.B, isFast, isSimple bool) {
 	b.StopTimer()
 
@@ -245,8 +263,7 @@ func benchmarkInjectorInvoke(b *testing.B, isFast, isSimple bool) {
 	dep2 := "another dep"
 	injector.MapTo(dep2, (*SpecialString)(nil))
 
-	var f1 interface{}
-	var f2 interface{}
+	var f1, f2 interface{}
 	if isSimple { //func()
 		f1 = f1SimpleInjectorInvoke
 		f2 = f2SimpleInjectorInvokeHandler(f2SimpleInjectorInvoke)
