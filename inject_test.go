@@ -181,3 +181,88 @@ func Test_Injector_Implementors(t *testing.T) {
 		So(injector.GetVal(inject.InterfaceOf((*fmt.Stringer)(nil))).IsValid(), ShouldBeTrue)
 	})
 }
+
+//----------Benchmark InjectorInvoke-------------
+
+func f1InjectorInvoke(d1 string, d2 SpecialString) string {
+	return "f1"
+}
+func f2InjectorInvoke(d1 string, d2 SpecialString) string {
+	return "f2"
+}
+
+func f1SimpleInjectorInvoke() {
+}
+func f2SimpleInjectorInvoke() {
+}
+
+// f2InjectorInvokeHandler f2 Invoke Handler
+type f2InjectorInvokeHandler func(d1 string, d2 SpecialString) string
+
+func (f2 f2InjectorInvokeHandler) Invoke(p []interface{}) ([]reflect.Value, error) {
+	ret := f2(p[0].(string), p[1].(SpecialString))
+	return []reflect.Value{reflect.ValueOf(ret)}, nil
+}
+
+type f2SimpleInjectorInvokeHandler func()
+
+func (f2 f2SimpleInjectorInvokeHandler) Invoke(p []interface{}) ([]reflect.Value, error) {
+	f2()
+	return nil, nil
+}
+
+func BenchmarkInjectorInvokeNative(b *testing.B) {
+	b.StopTimer()
+	dep := "some dependency"
+	dep2 := "another dep"
+	var d2 SpecialString
+	d2 = dep2
+
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		f1InjectorInvoke(dep, d2)
+	}
+}
+
+func BenchmarkInjectorInvokeOriginal(b *testing.B) {
+	benchmarkInjectorInvoke(b, false, false)
+}
+func BenchmarkInjectorInvokeFast(b *testing.B) {
+	benchmarkInjectorInvoke(b, true, false)
+}
+func BenchmarkInjectorInvokeOriginalSimple(b *testing.B) {
+	benchmarkInjectorInvoke(b, false, true)
+}
+func BenchmarkInjectorInvokeFastSimple(b *testing.B) {
+	benchmarkInjectorInvoke(b, true, true)
+}
+func benchmarkInjectorInvoke(b *testing.B, isFast, isSimple bool) {
+	b.StopTimer()
+
+	injector := inject.New()
+	dep := "some dependency"
+	injector.Map(dep)
+	dep2 := "another dep"
+	injector.MapTo(dep2, (*SpecialString)(nil))
+
+	var f1 interface{}
+	var f2 interface{}
+	if isSimple { //func()
+		f1 = f1SimpleInjectorInvoke
+		f2 = f2SimpleInjectorInvokeHandler(f2SimpleInjectorInvoke)
+	} else { //func(p1, p2) ret
+		f1 = f1InjectorInvoke
+		f2 = f2InjectorInvokeHandler(f2InjectorInvoke)
+	}
+	injector.Invoke(f1)
+	injector.Invoke(f2)
+
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		if isFast {
+			injector.Invoke(f2)
+		} else {
+			injector.Invoke(f1)
+		}
+	}
+}
